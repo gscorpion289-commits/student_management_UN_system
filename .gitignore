@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment Security
+.env
+
+# AI Agents, MCP Tools, & Workspace Metadata
+.agents/
+.kilo/
+.mcp.json
+kilo.json
+skills-lock.json
+
+# OS Overhead
+.DS_Store
+Thumbs.db

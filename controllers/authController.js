@@ -25,6 +25,14 @@ const register = async (req, res) => {
     );
 
     const user = result.rows[0];
+
+    const studentNumber = `STU-${user.id.slice(0, 8)}`;
+    await pool.query(
+      `INSERT INTO students (user_id, student_number, first_name, last_name)
+       VALUES ($1, $2, $3, $4)`,
+      [user.id, studentNumber, 'Student', 'Pending']
+    );
+
     res.status(201).json({ user });
   } catch (err) {
     console.error('Register error:', err);

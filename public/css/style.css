@@ -311,6 +311,32 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.status-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-pass {
+  color: #14532d;
+  background: var(--success-weak);
+}
+
+.status-fail {
+  color: #7f1d1d;
+  background: var(--danger-weak);
+}
+
+.status-neutral {
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -425,6 +451,12 @@ body {
 
 .admin-card h3 {
   color: var(--admin);
+}
+
+.admin-divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 18px 0 16px;
 }
 
 .empty-admin {

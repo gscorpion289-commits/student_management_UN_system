@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal - Student Management University System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Admin Portal</h1>
+    </header>
+
+    <main class="app-main">
+      <section id="auth-section" class="auth-section">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">Login</button>
+          <button class="auth-tab" data-tab="register">Register</button>
+        </div>
+
+        <form id="login-form" class="auth-form active" method="POST" action="/api/auth/login">
+          <h2>Welcome Back</h2>
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" name="email" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" name="password" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary">Login</button>
+          <p class="form-error" id="login-error"></p>
+        </form>
+
+        <form id="register-form" class="auth-form" method="POST" action="/api/auth/register">
+          <h2>Create Account</h2>
+          <div class="form-group">
+            <label for="register-email">Email</label>
+            <input type="email" id="register-email" name="email" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password</label>
+            <input type="password" id="register-password" name="password" required minlength="6" placeholder="At least 6 characters">
+          </div>
+          <button type="submit" class="btn btn-primary">Register</button>
+          <p class="form-error" id="register-error"></p>
+        </form>
+      </section>
+
+      <section id="dashboard-section" class="dashboard-section hidden">
+        <header class="dashboard-header">
+          <div class="student-info">
+            <h2 id="student-name">Administrator</h2>
+            <span id="student-email" class="student-email"></span>
+          </div>
+          <button id="logout-btn" class="btn btn-secondary">Logout</button>
+        </header>
+
+        <div class="dashboard-grid">
+          <div id="admin-card" class="card admin-card">
+            <h3>Admin Portal</h3>
+            <form id="grade-form" class="inline-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="grade-student-id">Student ID</label>
+                  <input type="text" id="grade-student-id" name="student_id" required>
+                </div>
+                <div class="form-group">
+                  <label for="grade-course-id">Course ID</label>
+                  <input type="text" id="grade-course-id" name="course_id" required>
+                </div>
+                <div class="form-group">
+                  <label for="grade-value">Grade</label>
+                  <input type="text" id="grade-value" name="grade" required placeholder="A+">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-admin">Update Grade</button>
+              <p class="form-error" id="grade-error"></p>
+            </form>
+            <hr class="admin-divider">
+            <h4>Create Course</h4>
+            <form id="course-form" class="inline-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="course-code">Course Code</label>
+                  <input type="text" id="course-code" name="course_code" required placeholder="SE101">
+                </div>
+                <div class="form-group">
+                  <label for="course-name">Course Name</label>
+                  <input type="text" id="course-name" name="course_name" required placeholder="Software Engineering">
+                </div>
+                <div class="form-group">
+                  <label for="course-credits">Credit Hours</label>
+                  <input type="number" id="course-credits" name="credits" required min="1" max="5" step="1" placeholder="3">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-admin">Create Course</button>
+              <p class="form-error" id="course-error"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

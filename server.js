@@ -4,6 +4,7 @@ const express = require('express');
 const pool = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const coursesRoutes = require('./routes/coursesRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,7 @@ app.use(express.static('public'));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/courses', coursesRoutes);
 
 app.get('/', (req, res) => {
   res.send('Student Management University System API');

@@ -8,24 +8,36 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+  // Page detection based on DOM structure
+  const isAdminPage = () => !!$('#admin-card') && !$('#transcript-table');
+  const isStudentPage = () => !!$('#transcript-table');
+
+  // Shared elements
   const authSection = $('#auth-section');
   const dashboardSection = $('#dashboard-section');
   const loginForm = $('#login-form');
   const registerForm = $('#register-form');
   const loginError = $('#login-error');
   const registerError = $('#register-error');
+  const logoutBtn = $('#logout-btn');
+
+  // Student-only elements
   const profileForm = $('#profile-form');
   const profileError = $('#profile-error');
   const enrollForm = $('#enroll-form');
   const enrollError = $('#enroll-error');
-  const gradeForm = $('#grade-form');
-  const gradeError = $('#grade-error');
   const transcriptBody = $('#transcript-body');
   const studentName = $('#student-name');
   const studentNumber = $('#student-number');
   const studentEmail = $('#student-email');
   const studentGpa = $('#student-gpa');
   const profileSetup = $('#profile-setup');
+
+  // Admin-only elements
+  const gradeForm = $('#grade-form');
+  const gradeError = $('#grade-error');
+  const courseForm = $('#course-form');
+  const courseError = $('#course-error');
   const adminCard = $('#admin-card');
 
   let currentUser = null;
@@ -70,6 +82,7 @@
     showError(profileError, '');
     showError(enrollError, '');
     showError(gradeError, '');
+    showError(courseError, '');
   };
 
   const switchTab = (tab) => {
@@ -83,28 +96,33 @@
   };
 
   const showAuth = () => {
-    authSection.classList.remove('hidden');
-    dashboardSection.classList.add('hidden');
+    if (authSection) authSection.classList.remove('hidden');
+    if (dashboardSection) dashboardSection.classList.add('hidden');
   };
 
   const showDashboard = () => {
-    authSection.classList.add('hidden');
-    dashboardSection.classList.remove('hidden');
+    if (authSection) authSection.classList.add('hidden');
+    if (dashboardSection) dashboardSection.classList.remove('hidden');
   };
 
   const renderProfile = (student) => {
+    if (!studentName) return;
     studentName.textContent = `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim() || 'Student';
-    studentNumber.textContent = student.student_number || 'Pending';
-    studentEmail.textContent = student.email || '';
+    if (studentNumber) studentNumber.textContent = student.student_number || 'Pending';
+    if (studentEmail) studentEmail.textContent = student.email || '';
 
-    if (!student.student_number || !student.first_name || !student.last_name) {
-      profileSetup.classList.remove('hidden');
-    } else {
-      profileSetup.classList.add('hidden');
+    if (profileSetup) {
+      if (!student.student_number || !student.first_name || !student.last_name) {
+        profileSetup.classList.remove('hidden');
+      } else {
+        profileSetup.classList.add('hidden');
+      }
     }
   };
 
   const renderEnrollments = (enrollments = []) => {
+    if (!transcriptBody) return;
+
     if (!enrollments.length) {
       transcriptBody.innerHTML = `
         <tr class="empty-state">
@@ -122,7 +140,10 @@
         <td>${escapeHtml(e.course_code)}</td>
         <td>${escapeHtml(e.course_name)}</td>
         <td>${escapeHtml(String(e.credits ?? ''))}</td>
-        <td>${escapeHtml(formatGrade(e.grade))}</td>
+        <td>
+          ${escapeHtml(formatGrade(e.grade))}
+          ${renderStatusBadge(e.grade)}
+        </td>
         <td>${escapeHtml(formatDate(e.enrolled_at))}</td>
       </tr>
     `
@@ -170,6 +191,17 @@
     return String(grade);
   };
 
+  const renderStatusBadge = (grade) => {
+    if (grade == null || grade === '') {
+      return '<span class="status-badge status-neutral">Pending</span>';
+    }
+    const g = String(grade).trim().toUpperCase();
+    if (g === 'F') {
+      return '<span class="status-badge status-fail">Fail</span>';
+    }
+    return '<span class="status-badge status-pass">Pass</span>';
+  };
+
   const updateGpaDisplay = (enrollments) => {
     if (!studentGpa) return;
 
@@ -200,6 +232,8 @@
   };
 
   const fetchProfile = async () => {
+    if (!isStudentPage()) return;
+
     try {
       const res = await fetch(`${API_BASE}/students/profile`, {
         headers: getHeaders(),
@@ -258,6 +292,20 @@
 
       setToken(data.token);
       setUser(data.user || currentUser);
+
+      // Role-based routing: admin goes to dedicated portal
+      if (currentUser && currentUser.role === 'admin') {
+        if (!isAdminPage()) {
+          window.location.href = '/admin.html';
+          return;
+        }
+      } else {
+        if (isAdminPage()) {
+          window.location.href = '/index.html';
+          return;
+        }
+      }
+
       applyAuthState();
       await fetchProfile();
     } catch (err) {
@@ -297,7 +345,6 @@
         return;
       }
 
-      // Auto-login after registration
       showError(registerError, '');
       switchTab('login');
       $('#login-email').value = email;
@@ -413,10 +460,55 @@
       $('#grade-student-id').value = '';
       $('#grade-course-id').value = '';
       $('#grade-value').value = '';
-      await fetchProfile();
     } catch (err) {
       console.error('Grade update error:', err);
       showError(gradeError, 'Network error. Please try again.');
+    }
+  };
+
+  const handleCourseSubmit = async (event) => {
+    event.preventDefault();
+    clearErrors();
+
+    if (!currentUser || currentUser.role !== 'admin') {
+      showError(courseError, 'Admin access required');
+      return;
+    }
+
+    const courseCode = $('#course-code').value.trim();
+    const courseName = $('#course-name').value.trim();
+    const creditsRaw = $('#course-credits').value.trim();
+
+    if (!courseCode || !courseName || !creditsRaw) {
+      showError(courseError, 'All fields are required');
+      return;
+    }
+
+    const credits = Number(creditsRaw);
+    if (!Number.isInteger(credits) || credits < 1 || credits > 5) {
+      showError(courseError, 'Credit hours must be an integer between 1 and 5');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/courses`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ course_code: courseCode, course_name: courseName, credits }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        showError(courseError, data.message || 'Failed to create course');
+        return;
+      }
+
+      alert('Course created successfully!');
+      if (courseForm) courseForm.reset();
+    } catch (err) {
+      console.error('Create course error:', err);
+      showError(courseError, 'Network error. Please try again.');
     }
   };
 
@@ -426,30 +518,43 @@
       clearToken();
       clearUser();
       clearForms();
-      studentName.textContent = '';
-      studentNumber.textContent = '';
-      studentEmail.textContent = '';
-      studentGpa.textContent = '';
-      transcriptBody.innerHTML = '';
-      profileSetup.classList.add('hidden');
-      adminCard.classList.add('hidden');
+      wipeDashboardDOM();
       showAuth();
       return false;
     }
     return true;
   };
 
+  const enforceAdminRouteGuard = () => {
+    const token = getToken();
+    const user = getUser();
+
+    if (!token || !user || user.role !== 'admin') {
+      clearToken();
+      clearUser();
+      clearForms();
+      wipeDashboardDOM();
+      showAuth();
+      return false;
+    }
+    return true;
+  };
+
+  const wipeDashboardDOM = () => {
+    if (studentName) studentName.textContent = '';
+    if (studentNumber) studentNumber.textContent = '';
+    if (studentEmail) studentEmail.textContent = '';
+    if (studentGpa) studentGpa.textContent = '';
+    if (transcriptBody) transcriptBody.innerHTML = '';
+    if (profileSetup) profileSetup.classList.add('hidden');
+    if (adminCard) adminCard.classList.add('hidden');
+  };
+
   const handleLogout = () => {
     clearToken();
     clearUser();
     clearForms();
-    studentName.textContent = '';
-    studentNumber.textContent = '';
-    studentEmail.textContent = '';
-    studentGpa.textContent = '';
-    transcriptBody.innerHTML = '';
-    profileSetup.classList.add('hidden');
-    adminCard.classList.add('hidden');
+    wipeDashboardDOM();
     showAuth();
   };
 
@@ -459,6 +564,7 @@
     if (profileForm) profileForm.reset();
     if (enrollForm) enrollForm.reset();
     if (gradeForm) gradeForm.reset();
+    if (courseForm) courseForm.reset();
     clearErrors();
   };
 
@@ -471,9 +577,9 @@
 
     const user = getUser();
     if (user?.role === 'admin') {
-      adminCard.classList.remove('hidden');
+      if (adminCard) adminCard.classList.remove('hidden');
     } else {
-      adminCard.classList.add('hidden');
+      if (adminCard) adminCard.classList.add('hidden');
     }
 
     showDashboard();
@@ -483,17 +589,11 @@
     clearToken();
     clearUser();
     clearForms();
-    studentName.textContent = '';
-    studentNumber.textContent = '';
-    studentEmail.textContent = '';
-    studentGpa.textContent = '';
-    transcriptBody.innerHTML = '';
-    profileSetup.classList.add('hidden');
-    adminCard.classList.add('hidden');
+    wipeDashboardDOM();
     showAuth();
   };
 
-  const init = () => {
+  const initStudentPage = () => {
     if (!loginForm || !registerForm) {
       console.error('Required form elements not found');
       return;
@@ -505,8 +605,9 @@
     if (profileForm) profileForm.addEventListener('submit', handleProfileSubmit);
     if (enrollForm) enrollForm.addEventListener('submit', handleEnroll);
     if (gradeForm) gradeForm.addEventListener('submit', handleGradeUpdate);
+    if (courseForm) courseForm.addEventListener('submit', handleCourseSubmit);
 
-    $('#logout-btn')?.addEventListener('click', handleLogout);
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
     $$('.auth-tab').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -519,6 +620,42 @@
 
     if (getToken()) {
       fetchProfile();
+    }
+  };
+
+  const initAdminPage = () => {
+    if (!loginForm || !registerForm) {
+      console.error('Required form elements not found');
+      return;
+    }
+
+    loginForm.addEventListener('submit', handleLogin);
+    registerForm.addEventListener('submit', handleRegister);
+
+    if (gradeForm) gradeForm.addEventListener('submit', handleGradeUpdate);
+    if (courseForm) courseForm.addEventListener('submit', handleCourseSubmit);
+
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
+    $$('.auth-tab').forEach((btn) => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // Strict admin route guard
+    enforceAdminRouteGuard();
+    applyAuthState();
+
+    currentUser = getUser() || null;
+  };
+
+  const init = () => {
+    if (isAdminPage()) {
+      initAdminPage();
+    } else if (isStudentPage()) {
+      initStudentPage();
+    } else {
+      // Fallback: treat as student page
+      initStudentPage();
     }
   };
 

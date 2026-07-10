@@ -8,5 +8,6 @@ router.get('/profile', authenticate, studentController.getStudentProfile);
 router.post('/profile', authenticate, studentController.createStudentProfile);
 router.post('/enroll', authenticate, studentController.enrollInCourse);
 router.put('/grade', authenticate, studentController.updateGrade);
+router.put('/enrollments/:id/grade', authenticate, studentController.updateEnrollmentGrade);
 
 module.exports = router;

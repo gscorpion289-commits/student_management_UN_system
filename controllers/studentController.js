@@ -20,7 +20,7 @@ const getStudentProfile = async (req, res) => {
 
     const result = await pool.query(
       `SELECT s.id as student_id, s.student_number, s.first_name, s.last_name, s.date_of_birth, s.enrollment_date, u.email,
-              c.id as course_id, c.course_code, c.course_name, c.credits, e.grade, e.enrolled_at
+              e.id as enrollment_id, c.id as course_id, c.course_code, c.course_name, c.credits, e.grade, e.enrolled_at
        FROM students s
        JOIN users u ON s.user_id = u.id
        LEFT JOIN enrollments e ON s.id = e.student_id
@@ -47,6 +47,7 @@ const getStudentProfile = async (req, res) => {
     const enrollments = result.rows
       .filter((r) => r.course_id !== null)
       .map((r) => ({
+        enrollment_id: r.enrollment_id,
         course_id: r.course_id,
         course_code: r.course_code,
         course_name: r.course_name,
@@ -169,10 +170,43 @@ const updateGrade = async (req, res) => {
   }
 };
 
+const updateEnrollmentGrade = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const { grade } = req.body;
+    const enrollmentId = req.params.id;
+
+    if (grade === undefined || grade === null) {
+      return res.status(400).json({ message: 'grade is required' });
+    }
+
+    const result = await pool.query(
+      `UPDATE enrollments
+       SET grade = $1
+       WHERE id = $2
+       RETURNING id, student_id, course_id, grade, enrolled_at`,
+      [grade, enrollmentId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Enrollment not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Update enrollment grade error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getAllStudents,
   getStudentProfile,
   createStudentProfile,
   enrollInCourse,
   updateGrade,
+  updateEnrollmentGrade,
 };
